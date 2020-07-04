@@ -1,41 +1,41 @@
 # god-jay scout-elasticsearch
 
-Use elasticsearch as easy as using Eloquent ORM in your laravel application.
+在laravel项目中像使用Eloquent ORM一样简单地使用elasticsearch
 
-English | [简体中文](README.zh-cn.md)
+[English](README.md) | 简体中文
 
-## Contents
+## 目录
 
-- [Installation](#installation)
-- [Configuration](#configuration)
-- [Usage](#usage)
-    * [Create elasticsearch index](#create-elasticsearch-index)
-    * [Import the given model into the search index](#import-the-given-model-into-the-search-index)
-    * [Flush all of the model's records from the index](#flush-all-of-the-model's-records-from-the-index)
-    * [Adding Records](#adding-records)
-    * [Updating Records](#updating-records)
-    * [Removing Records](#removing-records)
-- [Searching](#searching)
+- [安装](#安装)
+- [配置](#配置)
+- [使用](#使用)
+    * [创建 elasticsearch index](#创建-elasticsearch-index)
+    * [将模型表中的数据导入到elasticsearch](#将模型表中的数据导入到-elasticsearch)
+    * [从索引中删除所有数据](#从索引中删除所有数据)
+    * [增加记录](#增加记录)
+    * [更新记录](#更新记录)
+    * [移除记录](#移除记录)
+- [搜索](#搜索)
 
 
-## Installation
+## 安装
 
-You can install the package via composer:
+你可以通过composer安装此包：
 
 ``` bash
 composer require god-jay/scout-elasticsearch
 ```
 
 
-## Configuration
+## 配置
 
-Assuming there is a `posts` table and a Post Model, the simplified table may looks like:
+假设我们有一个`posts`表以及一个Post模型，简化的表可能有以下结构数据：
 
 | id | title | content | created_at |
 | :---: | :---: | :---: | :---: |
 | 1 | 标题 | 文本内容 | 2020-01-01 01:01:01 |
 
-Use GodJay\ScoutElasticsearch\Searchable in your model:
+在你的模型中使用GodJay\ScoutElasticsearch\Searchable：
 
 ```php
 namespace App\Models;
@@ -49,26 +49,26 @@ class Post extends Model
 }
 ```
 
-Add searchableAs function in the model:
+在该模型中增加searchableAs方法：
 
 ```php
 public function searchableAs()
 {
-    //elasticsearch index name, you can set any name you like in the model
+    //elasticsearch index的名称，可以随意取
     return 'posts';
 }
 ```
 
 
-## Usage
+## 使用
 
-### Create elasticsearch index
+### 创建 Elasticsearch Index
 
-Add getElasticMapping function in the model,
+在该模型中增加getElasticMapping方法，
  
-then run `php artisan elastic:create-index "App\Models\Post"` 
+然后运行`php artisan elastic:create-index "App\Models\Post"`命令 
 
-For more details, see [Create index API](https://www.elastic.co/guide/en/elasticsearch/reference/master/indices-create-index.html)
+更多详情请查看elastic search官方文档：[Create index API](https://www.elastic.co/guide/en/elasticsearch/reference/master/indices-create-index.html)
 ```php
 public function getElasticMapping()
 {
@@ -86,7 +86,7 @@ public function getElasticMapping()
     ];
 }
 ```
-The elasticsearch index will be like:
+创建出的elasticsearch索引：
 ```json
 {
   "mapping": {
@@ -108,11 +108,11 @@ The elasticsearch index will be like:
 }
 ```
 
-### Import the given model into the search index
+### 将模型表中的数据导入到 Elasticsearch
 
-If there already exist many rows in your table, and you want to import the rows to elasticsearch,
+如果在该表中，已经存在许多数据，你想将这些数据导入到elasticsearch，
 
-Add toSearchableArray function in the model, then run `php artisan scout:import "App\Models\Post"` 
+在模型中增加toSearchableArray方法，然后运行`php artisan scout:import "App\Models\Post"` 
 
 ```php
 public function toSearchableArray()
@@ -125,7 +125,7 @@ public function toSearchableArray()
    ];
 }
 ```
-After import the rows from table above, the elasticsearch index will be like:
+将这些数据导入到elasticsearch中后，elasticsearch index将会变成这样：
 ```json
 {
   "mapping": {
@@ -159,12 +159,12 @@ After import the rows from table above, the elasticsearch index will be like:
 }
 ```
 
-### Flush all of the model's records from the index
+### 从索引中删除所有数据
 
-Run `php artisan scout:flush "App\Models\Post"`
+运行`php artisan scout:flush "App\Models\Post"`
 
-### Adding Records
-Once you have added the Searchable trait to a model, all you need to do is save a model instance and it will automatically be added to your search index.
+### 增加记录
+只要在模型中使用Searchable，只需要执行保存，就可以自动将该记录同步到elasticsearch
 ```php
 $post = new Post();
 
@@ -173,8 +173,8 @@ $post = new Post();
 $post->save();
 ``` 
 
-### Updating Records
-To update a searchable model, you only need to update the model instance's properties and save the model to your database.
+### 更新记录
+要更新一个搜索记录，只要更新模型的属性值，然后保存即可
 ```php
 $post = Post::find(1);
 
@@ -183,30 +183,30 @@ $post = Post::find(1);
 $post->save();
 ``` 
 
-### Removing Records
-To remove a record from your index, delete the model from the database. This form of removal is even compatible with soft deleted models:
+### 移除记录
+要从elasticsearch中移除一个记录，只要执行删除操作
 ```php
 $post = Post::find(1);
 
 $post->delete();
 ``` 
 
-## Searching
-Base:
+## 搜索
+基础使用：
 ```php
 $posts = Post::search('内容')->get();
 ```
 
-Paginate:
+分页：
 ```php
 $posts = Post::search('内容')->paginate(10);
 ```
 
-Highlight:
+高亮：
 ```php
 $post = Post::search('内容')->highlight(['title' => null, 'content' => null])->first();
 ```
-The search result will be:
+以上数据的搜索结果：
 ```php
 App\Models\Post Object
 (
