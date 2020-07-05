@@ -26,6 +26,13 @@
 composer require god-jay/scout-elasticsearch
 ```
 
+安装完成后，需要使用vendor:publish命令，来生成Scout配置文件。这个命令将会在你的config目录下生成一个 scout.php
+
+``` bash
+php artisan vendor:publish --provider="Laravel\Scout\ScoutServiceProvider"
+```
+然后在你的.env文件中添加一行`SCOUT_DRIVER=elastic`
+
 
 ## 配置
 

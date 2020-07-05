@@ -26,6 +26,13 @@ You can install the package via composer:
 composer require god-jay/scout-elasticsearch
 ```
 
+After installing the package, you should publish the Scout configuration using the vendor:publish Artisan command. This command will publish the scout.php configuration file to your config directory:
+
+``` bash
+php artisan vendor:publish --provider="Laravel\Scout\ScoutServiceProvider"
+```
+
+Then add `SCOUT_DRIVER=elastic` in your .env file.
 
 ## Configuration
 
