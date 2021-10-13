@@ -15,10 +15,16 @@ class ScoutElasticsearchServiceProvider extends ServiceProvider
      */
     public function register()
     {
+        $this->mergeConfigFrom(__DIR__.'/../config/elasticsearch.php', 'elasticsearch');
+
         if ($this->app->runningInConsole()) {
             $this->commands([
                 UpdateMappingCommand::class,
                 CreateIndexCommand::class,
+            ]);
+
+            $this->publishes([
+                __DIR__ . '/../config/elasticsearch.php' => $this->app['path.config'] . DIRECTORY_SEPARATOR . 'elasticsearch.php',
             ]);
         }
     }

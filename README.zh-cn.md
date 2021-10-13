@@ -16,7 +16,7 @@
     * [更新记录](#更新记录)
     * [移除记录](#移除记录)
 - [搜索](#搜索)
-
+- [高级用法](#高级用法)
 
 ## 安装
 
@@ -31,8 +31,13 @@ composer require god-jay/scout-elasticsearch
 ``` bash
 php artisan vendor:publish --provider="Laravel\Scout\ScoutServiceProvider"
 ```
-然后在你的.env文件中添加一行`SCOUT_DRIVER=elastic`
 
+然后在你的.env文件中添加两行
+
+```
+SCOUT_DRIVER=elastic
+ELASTICSEARCH_HOST=your_es_host_ip:port
+```
 
 ## 配置
 
@@ -66,16 +71,17 @@ public function searchableAs()
 }
 ```
 
-
 ## 使用
 
 ### 创建 Elasticsearch Index
 
 在该模型中增加getElasticMapping方法，
- 
-然后运行`php artisan elastic:create-index "App\Models\Post"`命令 
 
-更多详情请查看elastic search官方文档：[Create index API](https://www.elastic.co/guide/en/elasticsearch/reference/master/indices-create-index.html)
+然后运行`php artisan elastic:create-index "App\Models\Post"`命令
+
+更多详情请查看elastic
+search官方文档：[Create index API](https://www.elastic.co/guide/en/elasticsearch/reference/master/indices-create-index.html)
+
 ```php
 public function getElasticMapping()
 {
@@ -93,7 +99,9 @@ public function getElasticMapping()
     ];
 }
 ```
+
 创建出的elasticsearch索引：
+
 ```json
 {
   "mapping": {
@@ -119,7 +127,7 @@ public function getElasticMapping()
 
 如果在该表中，已经存在许多数据，你想将这些数据导入到elasticsearch，
 
-在模型中增加toSearchableArray方法，然后运行`php artisan scout:import "App\Models\Post"` 
+在模型中增加toSearchableArray方法，然后运行`php artisan scout:import "App\Models\Post"`
 
 ```php
 public function toSearchableArray()
@@ -132,7 +140,9 @@ public function toSearchableArray()
    ];
 }
 ```
+
 将这些数据导入到elasticsearch中后，elasticsearch index将会变成这样：
+
 ```json
 {
   "mapping": {
@@ -171,7 +181,9 @@ public function toSearchableArray()
 运行`php artisan scout:flush "App\Models\Post"`
 
 ### 增加记录
+
 只要在模型中使用Searchable，只需要执行保存，就可以自动将该记录同步到elasticsearch
+
 ```php
 $post = new Post();
 
@@ -181,7 +193,9 @@ $post->save();
 ``` 
 
 ### 更新记录
+
 要更新一个搜索记录，只要更新模型的属性值，然后保存即可
+
 ```php
 $post = Post::find(1);
 
@@ -191,7 +205,9 @@ $post->save();
 ``` 
 
 ### 移除记录
+
 要从elasticsearch中移除一个记录，只要执行删除操作
+
 ```php
 $post = Post::find(1);
 
@@ -199,21 +215,27 @@ $post->delete();
 ``` 
 
 ## 搜索
+
 基础使用：
+
 ```php
 $posts = Post::search('内容')->get();
 ```
 
 分页：
+
 ```php
 $posts = Post::search('内容')->paginate(10);
 ```
 
 高亮：
+
 ```php
 $post = Post::search('内容')->highlight(['title' => null, 'content' => null])->first();
 ```
+
 以上数据的搜索结果：
+
 ```php
 App\Models\Post Object
 (
@@ -236,5 +258,99 @@ App\Models\Post Object
         )
     ]
 )
+```
 
+## 高级用法
+
+ES script 排序：
+
+```php
+use GodJay\ScoutElasticsearch\ElasticsearchEngine;
+
+$posts = Post::search('', function (ElasticsearchEngine $engine, string $query, array $params) {
+    $params['body']['sort'] = array_merge([[
+        '_script' => [
+            'type' => 'number',
+            'script' => ['source' => "doc['field_a'].value * 0.7 + doc['field_b'].value * 0.3"],
+            'order' => 'desc'
+        ]
+    ]], $params['body']['sort'] ?? []);
+    $engine->setQueryParams($params);
+    return $engine;
+})->orderBy('id', 'desc')->where('field_c', 1)->get();
+```
+
+Debug：
+
+```php
+use GodJay\ScoutElasticsearch\ElasticsearchEngine;
+
+$debug = Post::search('', function (ElasticsearchEngine $engine, string $query, array $params) {
+    $params['body']['sort'] = array_merge([[
+        '_script' => [
+            'type' => 'number',
+            'script' => ['source' => "doc['field_a'].value * 0.7 + doc['field_b'].value * 0.3"],
+            'order' => 'desc'
+        ]
+    ]], $params['body']['sort'] ?? []);
+    $engine->setQueryParams($params);
+    return $engine;
+})->orderBy('id', 'desc')->where('field_c', 1)->where('field_d', ['x', 'y'])->debugSearch();
+```
+
+结果为：
+
+```php
+Array
+(
+    [result] => Illuminate\Database\Eloquent\Collection Object
+    ...
+    [query_params] => Array
+    ...
+    [exception] => 
+    ...
+)
+```
+
+其中，`$debug['query_params']`转成json为：
+
+```json
+{
+  "index": "posts",
+  "body": {
+    "sort": [
+      {
+        "_script": {
+          "type": "number",
+          "script": {
+            "source": "doc['field_a'].value * 0.7 + doc['field_b'].value * 0.3"
+          },
+          "order": "desc"
+        }
+      },
+      {
+        "id": "desc"
+      }
+    ],
+    "query": {
+      "bool": {
+        "must": [
+          {
+            "match_phrase": {
+              "field_c": 1
+            }
+          },
+          {
+            "terms": {
+              "field_d": [
+                "x",
+                "y"
+              ]
+            }
+          }
+        ]
+      }
+    }
+  }
+}
 ```

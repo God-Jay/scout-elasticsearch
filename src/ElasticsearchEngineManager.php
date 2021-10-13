@@ -9,6 +9,6 @@ class ElasticsearchEngineManager extends EngineManager
 {
     public function createElasticDriver()
     {
-        return new ElasticsearchEngine(ClientBuilder::create()->build());
+        return new ElasticsearchEngine(ClientBuilder::create()->setHosts([config('elasticsearch.host')])->build());
     }
 }

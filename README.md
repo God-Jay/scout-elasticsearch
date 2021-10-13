@@ -16,7 +16,7 @@ English | [简体中文](README.zh-cn.md)
     * [Updating Records](#updating-records)
     * [Removing Records](#removing-records)
 - [Searching](#searching)
-
+- [Advanced Usage](#advanced-usage)
 
 ## Installation
 
@@ -26,13 +26,21 @@ You can install the package via composer:
 composer require god-jay/scout-elasticsearch
 ```
 
-After installing the package, you should publish the Scout configuration using the vendor:publish Artisan command. This command will publish the scout.php configuration file to your config directory:
+After installing the package, you should publish the Scout configuration using the vendor:publish Artisan command. This
+command will publish the scout.php configuration file to your config directory:
 
 ``` bash
 php artisan vendor:publish --provider="Laravel\Scout\ScoutServiceProvider"
 ```
 
-Then add `SCOUT_DRIVER=elastic` in your .env file.
+Then add
+
+```
+SCOUT_DRIVER=elastic
+ELASTICSEARCH_HOST=your_es_host_ip:port
+```
+
+in your .env file.
 
 ## Configuration
 
@@ -66,16 +74,17 @@ public function searchableAs()
 }
 ```
 
-
 ## Usage
 
 ### Create elasticsearch index
 
 Add getElasticMapping function in the model,
- 
-then run `php artisan elastic:create-index "App\Models\Post"` 
 
-For more details, see [Create index API](https://www.elastic.co/guide/en/elasticsearch/reference/master/indices-create-index.html)
+then run `php artisan elastic:create-index "App\Models\Post"`
+
+For more details,
+see [Create index API](https://www.elastic.co/guide/en/elasticsearch/reference/master/indices-create-index.html)
+
 ```php
 public function getElasticMapping()
 {
@@ -93,7 +102,9 @@ public function getElasticMapping()
     ];
 }
 ```
+
 The elasticsearch index will be like:
+
 ```json
 {
   "mapping": {
@@ -119,7 +130,7 @@ The elasticsearch index will be like:
 
 If there already exist many rows in your table, and you want to import the rows to elasticsearch,
 
-Add toSearchableArray function in the model, then run `php artisan scout:import "App\Models\Post"` 
+Add toSearchableArray function in the model, then run `php artisan scout:import "App\Models\Post"`
 
 ```php
 public function toSearchableArray()
@@ -132,7 +143,9 @@ public function toSearchableArray()
    ];
 }
 ```
+
 After import the rows from table above, the elasticsearch index will be like:
+
 ```json
 {
   "mapping": {
@@ -171,7 +184,10 @@ After import the rows from table above, the elasticsearch index will be like:
 Run `php artisan scout:flush "App\Models\Post"`
 
 ### Adding Records
-Once you have added the Searchable trait to a model, all you need to do is save a model instance and it will automatically be added to your search index.
+
+Once you have added the Searchable trait to a model, all you need to do is save a model instance and it will
+automatically be added to your search index.
+
 ```php
 $post = new Post();
 
@@ -181,7 +197,10 @@ $post->save();
 ``` 
 
 ### Updating Records
-To update a searchable model, you only need to update the model instance's properties and save the model to your database.
+
+To update a searchable model, you only need to update the model instance's properties and save the model to your
+database.
+
 ```php
 $post = Post::find(1);
 
@@ -191,7 +210,10 @@ $post->save();
 ``` 
 
 ### Removing Records
-To remove a record from your index, delete the model from the database. This form of removal is even compatible with soft deleted models:
+
+To remove a record from your index, delete the model from the database. This form of removal is even compatible with
+soft deleted models:
+
 ```php
 $post = Post::find(1);
 
@@ -199,21 +221,27 @@ $post->delete();
 ``` 
 
 ## Searching
+
 Base:
+
 ```php
 $posts = Post::search('内容')->get();
 ```
 
 Paginate:
+
 ```php
 $posts = Post::search('内容')->paginate(10);
 ```
 
 Highlight:
+
 ```php
 $post = Post::search('内容')->highlight(['title' => null, 'content' => null])->first();
 ```
+
 The search result will be:
+
 ```php
 App\Models\Post Object
 (
@@ -236,5 +264,99 @@ App\Models\Post Object
         )
     ]
 )
+```
 
+## Advanced Usage
+
+ES script sort:
+
+```php
+use GodJay\ScoutElasticsearch\ElasticsearchEngine;
+
+$posts = Post::search('', function (ElasticsearchEngine $engine, string $query, array $params) {
+    $params['body']['sort'] = array_merge([[
+        '_script' => [
+            'type' => 'number',
+            'script' => ['source' => "doc['field_a'].value * 0.7 + doc['field_b'].value * 0.3"],
+            'order' => 'desc'
+        ]
+    ]], $params['body']['sort'] ?? []);
+    $engine->setQueryParams($params);
+    return $engine;
+})->orderBy('id', 'desc')->where('field_c', 1)->get();
+```
+
+Debug:
+
+```php
+use GodJay\ScoutElasticsearch\ElasticsearchEngine;
+
+$debug = Post::search('', function (ElasticsearchEngine $engine, string $query, array $params) {
+    $params['body']['sort'] = array_merge([[
+        '_script' => [
+            'type' => 'number',
+            'script' => ['source' => "doc['field_a'].value * 0.7 + doc['field_b'].value * 0.3"],
+            'order' => 'desc'
+        ]
+    ]], $params['body']['sort'] ?? []);
+    $engine->setQueryParams($params);
+    return $engine;
+})->orderBy('id', 'desc')->where('field_c', 1)->where('field_d', ['x', 'y'])->debugSearch();
+```
+
+The result will be:
+
+```php
+Array
+(
+    [result] => Illuminate\Database\Eloquent\Collection Object
+    ...
+    [query_params] => Array
+    ...
+    [exception] => 
+    ...
+)
+```
+
+The json string of `$debug['query_params']` will be:
+
+```json
+{
+  "index": "posts",
+  "body": {
+    "sort": [
+      {
+        "_script": {
+          "type": "number",
+          "script": {
+            "source": "doc['field_a'].value * 0.7 + doc['field_b'].value * 0.3"
+          },
+          "order": "desc"
+        }
+      },
+      {
+        "id": "desc"
+      }
+    ],
+    "query": {
+      "bool": {
+        "must": [
+          {
+            "match_phrase": {
+              "field_c": 1
+            }
+          },
+          {
+            "terms": {
+              "field_d": [
+                "x",
+                "y"
+              ]
+            }
+          }
+        ]
+      }
+    }
+  }
+}
 ```

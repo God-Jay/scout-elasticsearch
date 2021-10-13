@@ -34,20 +34,25 @@ class ElasticsearchBuilder extends Builder
         return $this;
     }
 
-
+    /**
+     * @param $options
+     * @return array
+     */
     public function generateParams($options)
     {
         $params = [
-            'index' => $this->index ?? $this->model->searchableAs(),
-            'body' => [
+            'index' => $this->index ?? $this->model->searchableAs()
+        ];
+        if ($query = $this->query) {
+            $params['body'] = [
                 'query' => [
                     'bool' => [
 //                        'must' => ['query_string' => ['query' => "*{$this->query}*"]]
-                        'must' => ['query_string' => ['query' => $this->query]]
+                        'must' => [['query_string' => ['query' => $query]]]
                     ]
-                ],
-            ]
-        ];
+                ]
+            ];
+        }
 
         if ($sort = $this->sort()) {
             $params['body']['sort'] = $sort;
@@ -65,9 +70,13 @@ class ElasticsearchBuilder extends Builder
             $params['body']['highlight']['fields'] = $this->highlight;
         }
 
+        if (isset($options['filters']) && count($options['filters'])) {
+            $params['body']['query']['bool']['must'] =
+                array_merge($params['body']['query']['bool']['must'] ?? [], $options['filters']);
+        }
+
         return $params;
     }
-
 
     /**
      * Generates the sort if theres any.
@@ -83,5 +92,10 @@ class ElasticsearchBuilder extends Builder
         return collect($this->orders)->map(function ($order) {
             return [$order['column'] => $order['direction']];
         })->toArray();
+    }
+
+    public function debugSearch()
+    {
+        return $this->engine()->debugSearch($this);
     }
 }

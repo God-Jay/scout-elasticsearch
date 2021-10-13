@@ -4,7 +4,6 @@ namespace GodJay\ScoutElasticsearch;
 
 class Highlight
 {
-
     protected $attributes = [];
 
     public function __construct(array $attributes)

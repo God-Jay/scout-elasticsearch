@@ -8,7 +8,9 @@ use Laravel\Scout\Engines\Engine;
 
 class ElasticsearchEngine extends Engine
 {
-    protected $elasticsearchClient;
+    public $elasticsearchClient;
+
+    protected $queryParams = [];
 
     /**
      * ElasticsearchEngine constructor.
@@ -76,7 +78,7 @@ class ElasticsearchEngine extends Engine
     public function search(Builder $builder)
     {
         return $this->performSearch($builder, array_filter([
-            'numericFilters' => $this->filters($builder),
+            'filters' => $this->filters($builder),
             'size' => $builder->limit,
         ]));
     }
@@ -92,7 +94,7 @@ class ElasticsearchEngine extends Engine
     public function paginate(Builder $builder, $perPage, $page)
     {
         return $this->performSearch($builder, [
-            'numericFilters' => $this->filters($builder),
+            'filters' => $this->filters($builder),
             'from' => (($page * $perPage) - $perPage),
             'size' => $perPage,
         ]);
@@ -153,7 +155,6 @@ class ElasticsearchEngine extends Engine
         $model->newQuery()->unsearchable();
     }
 
-
     /**
      * Perform the given search on the engine.
      *
@@ -163,18 +164,23 @@ class ElasticsearchEngine extends Engine
      */
     protected function performSearch(Builder $builder, array $options = [])
     {
-        $params = $builder->generateParams($options);
+        $this->queryParams = $builder->generateParams($options);
 
         if ($builder->callback) {
-            return call_user_func(
+            $callback = call_user_func(
                 $builder->callback,
-                $this->elasticsearchClient,
+                $this,
                 $builder->query,
-                $params
+                $this->queryParams
             );
+            if ($callback instanceof ElasticsearchEngine) {
+                return $callback->elasticsearchClient->search($this->queryParams);
+            } else {
+                return $callback;
+            }
         }
 
-        return $this->elasticsearchClient->search($params);
+        return $this->elasticsearchClient->search($this->queryParams);
     }
 
     /**
@@ -208,5 +214,31 @@ class ElasticsearchEngine extends Engine
             ]
         ];
         return $this->elasticsearchClient->indices()->create($params);
+    }
+
+    /**
+     * @param array $queryParams
+     * @return ElasticsearchEngine
+     */
+    public function setQueryParams(array $queryParams): ElasticsearchEngine
+    {
+        $this->queryParams = $queryParams;
+        return $this;
+    }
+
+    /**
+     * @param Builder $builder
+     * @return array
+     */
+    public function debugSearch(Builder $builder): array
+    {
+        try {
+            $result = $this->get($builder);
+            $exception = null;
+        } catch (\Exception $e) {
+            $result = null;
+            $exception = $e->getMessage();
+        }
+        return ['result' => $result, 'query_params' => $this->queryParams, 'exception' => $exception];
     }
 }
