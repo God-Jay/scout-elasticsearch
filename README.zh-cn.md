@@ -37,7 +37,31 @@ php artisan vendor:publish --provider="Laravel\Scout\ScoutServiceProvider"
 ```
 SCOUT_DRIVER=elastic
 ELASTICSEARCH_HOST=your_es_host_ip:port
+
+#需要验证es用户时添加
+ELASTICSEARCH_USER=your_es_user
+ELASTICSEARCH_PASS=your_es_pass
 ```
+
+### docker compose 运行 es + kibana
+
+如果你没有es服务，你可以试用 docker compose 安装运行 es + kibana：
+
+- 首先安装docker compose [安装docker compose](https://docs.docker.com/compose/install/)
+
+- 然后在本项目根目录下运行：
+  
+  ``` bash
+  docker-compose up -d
+  ```
+
+- 等docker容器跑完成后，便可以在浏览器中输入`http://localhost:5601`来访问kibana
+
+- 要停止docker容器，在本项目根目录运行：
+  
+  ``` bash
+  docker-compose down
+  ```
 
 ## 配置
 

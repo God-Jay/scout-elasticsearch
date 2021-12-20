@@ -38,7 +38,31 @@ Then add
 ```
 SCOUT_DRIVER=elastic
 ELASTICSEARCH_HOST=your_es_host_ip:port
+
+#Add if should auth es user
+ELASTICSEARCH_USER=your_es_user
+ELASTICSEARCH_PASS=your_es_pass
 ```
+
+### Docker compose run es + kibana
+
+If you don't have your own es service, you may install and run es + kibana with docker compose:
+
+- You should install docker compose first: [install docker compose](https://docs.docker.com/compose/install/)
+
+- Then run the command in the root of this directory:
+
+  ``` bash
+  docker-compose up -d
+  ```
+
+- You can browse `http://localhost:5601` to visit kibana.
+
+- To stop docker containers, run the command in the root of this directory:
+
+  ``` bash
+  docker-compose down
+  ```
 
 in your .env file.
 
